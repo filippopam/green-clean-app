@@ -1,0 +1,125 @@
+// backend/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String   
+  fullName  String
+  phone     String
+  role      Role     @default(CLIENT)
+  createdAt DateTime @default(now())
+  
+  addresses Address[]
+  orders    Order[]
+}
+
+model Address {
+  id           Int     @id @default(autoincrement())
+  userId       Int
+  alias        String  // "Casa", "Oficina"
+  street       String
+  number       String
+  neighborhood String
+  zipCode      String  
+  reference    String?
+  
+  user         User    @relation(fields: [userId], references: [id])
+}
+
+model Route {
+  id           Int      @id @default(autoincrement())
+  name         String   
+  description  String?
+  daysOfWeek   Int[]    // 1=Lun, 2=Mar...
+  zipCodes     String[] // ["27018", "27250"]
+  isActive     Boolean  @default(true)
+}
+
+model Product {
+  id          Int     @id @default(autoincrement())
+  name        String  
+  price       Decimal @db.Decimal(10, 2)
+  category    String? 
+  isActive    Boolean @default(true)
+  
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id              Int         @id @default(autoincrement())
+  userId          Int
+  totalAmount     Decimal     @db.Decimal(10, 2)
+  discountApplied Decimal     @default(0) @db.Decimal(10, 2)
+  finalAmount     Decimal     @db.Decimal(10, 2)
+  status          OrderStatus @default(SCHEDULED)
+  paymentMethod   PayMethod   @default(CASH_ON_DELIVERY)
+  paymentStatus   PayStatus   @default(PENDING)
+  
+  pickupDate      DateTime    
+  pickupAddress   String      
+  
+  user            User        @relation(fields: [userId], references: [id])
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int
+  productId Int
+  quantity  Int
+  unitPrice Decimal 
+  
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model Promotion {
+  id          Int      @id @default(autoincrement())
+  name        String   
+  code        String?  
+  type        DiscountType 
+  value       Decimal  
+  minAmount   Decimal? 
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(true)
+}
+
+enum Role {
+  CLIENT
+  ADMIN
+}
+
+enum OrderStatus {
+  SCHEDULED
+  PICKED_UP
+  IN_PROCESS
+  DELIVERED
+  CANCELLED
+}
+
+enum PayMethod {
+  ONLINE
+  CASH_ON_DELIVERY
+}
+
+enum PayStatus {
+  PENDING
+  PAID
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
